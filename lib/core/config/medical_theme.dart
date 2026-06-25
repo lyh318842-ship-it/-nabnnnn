@@ -45,13 +45,6 @@ class MedicalTheme {
   static const Color dividerDark = Color(0xFF3A3A3A);
 
 
-  static const TextStyle _appBarTitleTextStyle = TextStyle(
-    fontFamily: 'Tajawal',
-    fontSize: 20,
-    fontWeight: FontWeight.w800,
-    color: pure,
-  );
-
   static AppBarTheme _appBarTheme(Color background) => AppBarTheme(
         backgroundColor: background,
         foregroundColor: pure,
@@ -60,8 +53,6 @@ class MedicalTheme {
         scrolledUnderElevation: 1,
         shadowColor: Colors.black26,
         centerTitle: true,
-        titleTextStyle: _appBarTitleTextStyle,
-        toolbarTextStyle: _appBarTitleTextStyle,
         iconTheme: const IconThemeData(color: pure, size: 24),
         actionsIconTheme: const IconThemeData(color: pure, size: 24),
       );
@@ -77,6 +68,7 @@ class MedicalTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      fontFamily: 'Tajawal',
       
       // Color Scheme
       colorScheme: const ColorScheme.light(
@@ -460,6 +452,7 @@ class MedicalTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamily: 'Tajawal',
       
       // Color Scheme
       colorScheme: const ColorScheme.dark(
