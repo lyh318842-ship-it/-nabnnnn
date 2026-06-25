@@ -205,33 +205,59 @@ class _MedicalAiChatScreenState extends State<MedicalAiChatScreen> {
   }
 
   Future<void> _confirmDeleteMessage(BuildContext context, MedicalAiChatProvider provider, AiChatMessage message) async {
-    final confirmed = await showModalBottomSheet<bool>(
+    final action = await showModalBottomSheet<_MessageAction>(
       context: context,
       showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 10, 22, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Icon(Icons.delete_outline_rounded, size: 42, color: Theme.of(context).colorScheme.error),
-            const SizedBox(height: 12),
-            Text('حذف الرسالة؟', textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 8),
-            Text('سيتم حذف هذه الرسالة من واجهة المحادثة وسجل المحادثة المحفوظ.', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 18),
-            FilledButton.icon(onPressed: () => Navigator.pop(context, true), icon: const Icon(Icons.delete_rounded), label: const Text('حذف الرسالة')),
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
-          ],
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('خيارات الرسالة', textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: Icon(Icons.delete_outline_rounded, color: Theme.of(context).colorScheme.error),
+                title: Text('حذف الرسالة', style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w700)),
+                onTap: () => Navigator.pop(context, _MessageAction.delete),
+              ),
+              ListTile(
+                leading: const Icon(Icons.copy_rounded),
+                title: const Text('نسخ الرسالة'),
+                onTap: () => Navigator.pop(context, _MessageAction.copy),
+              ),
+              ListTile(
+                leading: const Icon(Icons.ios_share_rounded),
+                title: const Text('مشاركة الرسالة'),
+                onTap: () => Navigator.pop(context, _MessageAction.share),
+              ),
+            ],
+          ),
         ),
       ),
     );
-    if (confirmed == true) {
-      await provider.deleteMessage(message);
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الرسالة')));
+
+    switch (action) {
+      case _MessageAction.delete:
+        await provider.deleteMessage(message);
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الرسالة')));
+        break;
+      case _MessageAction.copy:
+        await Clipboard.setData(ClipboardData(text: message.content));
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الرسالة')));
+        break;
+      case _MessageAction.share:
+        await Share.share(message.content);
+        break;
+      case null:
+        break;
     }
   }
 }
+
+enum _MessageAction { delete, copy, share }
 
 
 
@@ -510,7 +536,7 @@ class _Composer extends StatelessWidget {
                 child: Row(children: [
                   ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.file(File(selectedImagePath!), width: 58, height: 58, fit: BoxFit.cover)),
                   const SizedBox(width: 10),
-                  Expanded(child: Text('تم اختيار صورة. اكتب وصفاً أو سؤالك عنها ثم أرسلها مع الرسالة.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant))),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('معاينة الصورة المحددة', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, color: colorScheme.onSurface)), const SizedBox(height: 3), Text('يمكنك تعديل الوصف أو حذف الصورة قبل الإرسال.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant))])),
                   IconButton(onPressed: onRemoveImage, icon: const Icon(Icons.close_rounded)),
                 ]),
               ),
@@ -527,7 +553,7 @@ class _Composer extends StatelessWidget {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => onSend(),
                 decoration: InputDecoration(
-                  hintText: 'اكتب سؤالك...',
+                  hintText: selectedImagePath == null ? 'اكتب سؤالك...' : 'اشرح ما الذي تريد تحليله في الصورة',
                   filled: true,
                   fillColor: colorScheme.surface,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

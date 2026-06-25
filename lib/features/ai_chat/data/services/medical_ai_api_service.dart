@@ -82,7 +82,7 @@ class MedicalAiApiService {
 
     if (useOpenRouter) {
       if (openRouterKey.isEmpty) {
-        throw StateError('OPENROUTER_API_KEY غير موجود. شغّل التطبيق باستخدام --dart-define=OPENROUTER_API_KEY=YOUR_KEY وتأكد أن AI_PROVIDER=openrouter.');
+        throw StateError(MedicalAiErrorHandler.unavailableMessage);
       }
       return _sendToOpenRouter(
         key: openRouterKey,
@@ -95,7 +95,7 @@ class MedicalAiApiService {
     }
 
     if (key.isEmpty) {
-      throw StateError('لم يتم ضبط مفتاح AI. استخدم GEMINI_API_KEY أو AI_PROVIDER=openrouter مع OPENROUTER_API_KEY.');
+      throw StateError(MedicalAiErrorHandler.unavailableMessage);
     }
 
     final geminiModels = _configuredModels(_geminiModels, fallback: model);
@@ -128,7 +128,7 @@ class MedicalAiApiService {
       lastFriendlyError = reply;
     }
 
-    throw StateError(lastFriendlyError ?? 'فشل الاتصال بخدمة الذكاء الاصطناعي بدون تفاصيل إضافية. راجع سجلات الطلب والاستجابة.');
+    throw StateError(lastFriendlyError ?? MedicalAiErrorHandler.genericMessage);
   }
 
   Future<String> _sendToGeminiModel({
@@ -187,7 +187,7 @@ class MedicalAiApiService {
 
       final reply = _extractGeminiReply(response.data);
       if (reply.isEmpty) {
-        throw StateError('Gemini أعاد استجابة فارغة. راجع السجلات وتأكد من صلاحية النموذج والمفتاح.');
+        throw StateError(MedicalAiErrorHandler.genericMessage);
       }
       return reply;
     } on DioException catch (e) {
@@ -300,7 +300,7 @@ class MedicalAiApiService {
 
         final reply = _extractOpenRouterReply(response.data);
         if (reply.isEmpty) {
-          lastFriendlyError = 'OpenRouter أعاد استجابة فارغة للنموذج $openRouterModel. Response: ${response.data}';
+          lastFriendlyError = MedicalAiErrorHandler.genericMessage;
           continue;
         }
         if (!_shouldTryFallback(reply)) return reply;
@@ -316,7 +316,7 @@ class MedicalAiApiService {
       }
     }
 
-    throw StateError(lastFriendlyError ?? 'فشل OpenRouter بدون تفاصيل إضافية. راجع السجلات.');
+    throw StateError(lastFriendlyError ?? MedicalAiErrorHandler.genericMessage);
   }
 
 
@@ -442,10 +442,9 @@ class MedicalAiApiService {
     _debug('$serviceName Error Response: $responseBody');
     _debug('$serviceName Error Message: ${e.message}');
 
-    final apiMessage = _extractApiErrorMessage(responseBody);
+    _debug('$serviceName Extracted API Error: ${_extractApiErrorMessage(responseBody)}');
 
-    return '$serviceName فشل${statusCode == null ? '' : ' (HTTP $statusCode)'}. '
-        '${apiMessage.isNotEmpty ? 'تفاصيل المزود: $apiMessage' : 'رسالة Dio: ${e.message}'}';
+    return MedicalAiErrorHandler.friendlyMessage(e);
   }
 
   String _formatAuthenticationError({
@@ -453,16 +452,8 @@ class MedicalAiApiService {
     required String googleMessage,
     required String? fallbackMessage,
   }) {
-    final actualMessage = googleMessage.isNotEmpty
-        ? googleMessage
-        : (fallbackMessage ?? 'لم ترسل Google تفاصيل إضافية.');
-
-    return 'رفضت Google طلب Gemini برمز $statusCode. '
-        'السبب الفعلي من Google: $actualMessage. '
-        'هذا يعني أن المفتاح لم يُقبل كمفتاح Gemini صالح لهذا الطلب، وليس مشكلة Firebase أو NEWS_API_KEY. '
-        'تأكد من إنشاء المفتاح من Google AI Studio كمفتاح Gemini API/Auth key أو من تقييد مفتاح Google Cloud القياسي على Generative Language API، '
-        'ثم شغّل التطبيق هكذا: flutter run --dart-define=GEMINI_API_KEY=YOUR_REAL_GEMINI_KEY. '
-        'إذا كان المفتاح من النوع القياسي وغير مقيّد فقد ترفضه Gemini API حالياً؛ أنشئ مفتاحاً جديداً من AI Studio أو أضف قيود API مناسبة.';
+    _debug('Gemini authentication error status=$statusCode message=$googleMessage fallback=$fallbackMessage');
+    return MedicalAiErrorHandler.unavailableMessage;
   }
 
   String _extractApiErrorMessage(dynamic data) {
