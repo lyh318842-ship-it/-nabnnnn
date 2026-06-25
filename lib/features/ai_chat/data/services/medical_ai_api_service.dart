@@ -82,7 +82,7 @@ class MedicalAiApiService {
 
     if (useOpenRouter) {
       if (openRouterKey.isEmpty) {
-        throw StateError('OPENROUTER_API_KEY غير موجود. شغّل التطبيق باستخدام --dart-define=OPENROUTER_API_KEY=YOUR_KEY وتأكد أن AI_PROVIDER=openrouter.');
+        throw StateError(MedicalAiErrorHandler.unavailableMessage);
       }
       return _sendToOpenRouter(
         key: openRouterKey,
@@ -95,7 +95,7 @@ class MedicalAiApiService {
     }
 
     if (key.isEmpty) {
-      throw StateError('لم يتم ضبط مفتاح AI. استخدم GEMINI_API_KEY أو AI_PROVIDER=openrouter مع OPENROUTER_API_KEY.');
+      throw StateError(MedicalAiErrorHandler.unavailableMessage);
     }
 
     final geminiModels = _configuredModels(_geminiModels, fallback: model);
@@ -128,7 +128,7 @@ class MedicalAiApiService {
       lastFriendlyError = reply;
     }
 
-    throw StateError(lastFriendlyError ?? 'فشل الاتصال بخدمة الذكاء الاصطناعي بدون تفاصيل إضافية. راجع سجلات الطلب والاستجابة.');
+    throw StateError(lastFriendlyError ?? MedicalAiErrorHandler.genericMessage);
   }
 
   Future<String> _sendToGeminiModel({
@@ -167,38 +167,51 @@ class MedicalAiApiService {
       },
     };
 
-    try {
-      _debug('Gemini Request URL: $geminiUrl');
-      _debug('Gemini Request Model: $modelName');
+    for (var attempt = 0; attempt < _maxRetryAttempts; attempt++) {
+      try {
+        _debug('Gemini Request URL: $geminiUrl');
+        _debug('Gemini Request Model: $modelName');
+        _debug('Gemini Attempt: ${attempt + 1}/$_maxRetryAttempts');
 
-      final response = await _dio.post(
-        geminiUrl,
-        data: payload,
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': key,
-          },
-        ),
-      );
+        final response = await _dio.post(
+          geminiUrl,
+          data: payload,
+          options: Options(
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': key,
+            },
+          ),
+        );
 
-      _debug('Gemini Status Code: ${response.statusCode}');
-      _debug('Gemini Response Body: ${response.data}');
+        _debug('Gemini Status Code: ${response.statusCode}');
+        _debug('Gemini Response Body: ${response.data}');
 
-      final reply = _extractGeminiReply(response.data);
-      if (reply.isEmpty) {
-        throw StateError('Gemini أعاد استجابة فارغة. راجع السجلات وتأكد من صلاحية النموذج والمفتاح.');
+        final reply = _extractGeminiReply(response.data);
+        if (reply.isEmpty) {
+          throw StateError(MedicalAiErrorHandler.genericMessage);
+        }
+        return reply;
+      } on DioException catch (e) {
+        if (_shouldRetryException(e) && attempt < _maxRetryAttempts - 1) {
+          await _delayBeforeRetry(attempt, serviceName: 'Gemini', modelName: modelName, error: e);
+          continue;
+        }
+        return _formatDioError(e, serviceName: 'Gemini');
+      } on SocketException catch (e) {
+        _debug('Gemini SocketException: $e');
+        if (attempt < _maxRetryAttempts - 1) {
+          await _delayBeforeRetry(attempt, serviceName: 'Gemini', modelName: modelName, error: e);
+          continue;
+        }
+        return MedicalAiErrorHandler.friendlyMessage(e);
+      } catch (e) {
+        _debug('Gemini Unknown Error: $e');
+        return MedicalAiErrorHandler.friendlyMessage(e);
       }
-      return reply;
-    } on DioException catch (e) {
-      return _formatDioError(e, serviceName: 'Gemini');
-    } on SocketException catch (e) {
-      _debug('Gemini SocketException: $e');
-      return MedicalAiErrorHandler.friendlyMessage(e);
-    } catch (e) {
-      _debug('Gemini Unknown Error: $e');
-      return MedicalAiErrorHandler.friendlyMessage(e);
     }
+
+    return MedicalAiErrorHandler.busyMessage;
   }
 
   Future<String> _sendToCustomMedicalAiBackend({
@@ -276,47 +289,62 @@ class MedicalAiApiService {
         'max_tokens': 1200,
       };
 
-      try {
-        _debug('OpenRouter Request URL: $openRouterUrl');
-        _debug('OpenRouter Request Model: $openRouterModel');
-        _debug('OpenRouter API Key Present: ${key.trim().isNotEmpty} length=${key.trim().length}');
-        _debug('OpenRouter Headers: Content-Type=application/json, Authorization=Bearer ***${key.length >= 4 ? key.substring(key.length - 4) : 'short'}, X-Title=Nabd Medical AI');
-        _debug('OpenRouter Request Payload: $payload');
+      for (var attempt = 0; attempt < _maxRetryAttempts; attempt++) {
+        try {
+          _debug('OpenRouter Request URL: $openRouterUrl');
+          _debug('OpenRouter Request Model: $openRouterModel');
+          _debug('OpenRouter Attempt: ${attempt + 1}/$_maxRetryAttempts');
+          _debug('OpenRouter API Key Present: ${key.trim().isNotEmpty} length=${key.trim().length}');
+          _debug('OpenRouter Headers: Content-Type=application/json, Authorization=Bearer ***${key.length >= 4 ? key.substring(key.length - 4) : 'short'}, X-Title=Nabd Medical AI');
+          _debug('OpenRouter Request Payload: $payload');
 
-        final response = await _dio.post(
-          openRouterUrl,
-          data: payload,
-          options: Options(
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $key',
-              'X-Title': 'Nabd Medical AI',
-            },
-          ),
-        );
+          final response = await _dio.post(
+            openRouterUrl,
+            data: payload,
+            options: Options(
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $key',
+                'X-Title': 'Nabd Medical AI',
+              },
+            ),
+          );
 
-        _debug('OpenRouter Status Code: ${response.statusCode}');
-        _debug('OpenRouter Response Body: ${response.data}');
+          _debug('OpenRouter Status Code: ${response.statusCode}');
+          _debug('OpenRouter Response Body: ${response.data}');
 
-        final reply = _extractOpenRouterReply(response.data);
-        if (reply.isEmpty) {
-          lastFriendlyError = 'OpenRouter أعاد استجابة فارغة للنموذج $openRouterModel. Response: ${response.data}';
-          continue;
+          final reply = _extractOpenRouterReply(response.data);
+          if (reply.isEmpty) {
+            lastFriendlyError = MedicalAiErrorHandler.genericMessage;
+            break;
+          }
+          if (!_shouldTryFallback(reply)) return reply;
+          lastFriendlyError = reply;
+          break;
+        } on DioException catch (e) {
+          if (_shouldRetryException(e) && attempt < _maxRetryAttempts - 1) {
+            await _delayBeforeRetry(attempt, serviceName: 'OpenRouter', modelName: openRouterModel, error: e);
+            continue;
+          }
+          lastFriendlyError = _formatDioError(e, serviceName: 'OpenRouter');
+          break;
+        } on SocketException catch (e) {
+          _debug('OpenRouter SocketException: $e');
+          if (attempt < _maxRetryAttempts - 1) {
+            await _delayBeforeRetry(attempt, serviceName: 'OpenRouter', modelName: openRouterModel, error: e);
+            continue;
+          }
+          lastFriendlyError = MedicalAiErrorHandler.friendlyMessage(e);
+          break;
+        } catch (e) {
+          _debug('OpenRouter Unknown Error: $e');
+          lastFriendlyError = MedicalAiErrorHandler.friendlyMessage(e);
+          break;
         }
-        if (!_shouldTryFallback(reply)) return reply;
-        lastFriendlyError = reply;
-      } on DioException catch (e) {
-        lastFriendlyError = _formatDioError(e, serviceName: 'OpenRouter');
-      } on SocketException catch (e) {
-        _debug('OpenRouter SocketException: $e');
-        lastFriendlyError = MedicalAiErrorHandler.friendlyMessage(e);
-      } catch (e) {
-        _debug('OpenRouter Unknown Error: $e');
-        lastFriendlyError = MedicalAiErrorHandler.friendlyMessage(e);
       }
     }
 
-    throw StateError(lastFriendlyError ?? 'فشل OpenRouter بدون تفاصيل إضافية. راجع السجلات.');
+    throw StateError(lastFriendlyError ?? MedicalAiErrorHandler.genericMessage);
   }
 
 
@@ -342,7 +370,52 @@ class MedicalAiApiService {
         text.contains('503') ||
         text.contains('unavailable') ||
         text.contains('high demand') ||
-        text.contains('overloaded');
+        text.contains('resource_exhausted') ||
+        text.contains('quota_exceeded') ||
+        text.contains('rate_limit') ||
+        text.contains('rate limit') ||
+        text.contains('overloaded') ||
+        text.contains(MedicalAiErrorHandler.busyMessage) ||
+        text.contains(MedicalAiErrorHandler.unavailableMessage);
+  }
+
+  static const int _maxRetryAttempts = 3;
+
+  bool _shouldRetryException(Object error) {
+    final text = error.toString().toLowerCase();
+    if (error is SocketException) return true;
+    if (error is DioException) {
+      final status = error.response?.statusCode;
+      return status == 408 ||
+          status == 429 ||
+          status == 500 ||
+          status == 502 ||
+          status == 503 ||
+          status == 504 ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          text.contains('unavailable') ||
+          text.contains('high_demand') ||
+          text.contains('high demand') ||
+          text.contains('resource_exhausted') ||
+          text.contains('quota_exceeded') ||
+          text.contains('rate_limit') ||
+          text.contains('rate limit') ||
+          text.contains('overloaded');
+    }
+    return text.contains('socket') || text.contains('timeout');
+  }
+
+  Future<void> _delayBeforeRetry(
+    int attempt, {
+    required String serviceName,
+    required String modelName,
+    required Object error,
+  }) async {
+    final delay = Duration(milliseconds: 700 * (attempt + 1) * (attempt + 1));
+    _debug('$serviceName retry ${attempt + 2}/$_maxRetryAttempts for $modelName after ${delay.inMilliseconds}ms. Error: $error');
+    await Future.delayed(delay);
   }
 
   String _buildMedicalPrompt(
@@ -442,10 +515,9 @@ class MedicalAiApiService {
     _debug('$serviceName Error Response: $responseBody');
     _debug('$serviceName Error Message: ${e.message}');
 
-    final apiMessage = _extractApiErrorMessage(responseBody);
+    _debug('$serviceName Extracted API Error: ${_extractApiErrorMessage(responseBody)}');
 
-    return '$serviceName فشل${statusCode == null ? '' : ' (HTTP $statusCode)'}. '
-        '${apiMessage.isNotEmpty ? 'تفاصيل المزود: $apiMessage' : 'رسالة Dio: ${e.message}'}';
+    return MedicalAiErrorHandler.friendlyMessage(e);
   }
 
   String _formatAuthenticationError({
@@ -453,16 +525,8 @@ class MedicalAiApiService {
     required String googleMessage,
     required String? fallbackMessage,
   }) {
-    final actualMessage = googleMessage.isNotEmpty
-        ? googleMessage
-        : (fallbackMessage ?? 'لم ترسل Google تفاصيل إضافية.');
-
-    return 'رفضت Google طلب Gemini برمز $statusCode. '
-        'السبب الفعلي من Google: $actualMessage. '
-        'هذا يعني أن المفتاح لم يُقبل كمفتاح Gemini صالح لهذا الطلب، وليس مشكلة Firebase أو NEWS_API_KEY. '
-        'تأكد من إنشاء المفتاح من Google AI Studio كمفتاح Gemini API/Auth key أو من تقييد مفتاح Google Cloud القياسي على Generative Language API، '
-        'ثم شغّل التطبيق هكذا: flutter run --dart-define=GEMINI_API_KEY=YOUR_REAL_GEMINI_KEY. '
-        'إذا كان المفتاح من النوع القياسي وغير مقيّد فقد ترفضه Gemini API حالياً؛ أنشئ مفتاحاً جديداً من AI Studio أو أضف قيود API مناسبة.';
+    _debug('Gemini authentication error status=$statusCode message=$googleMessage fallback=$fallbackMessage');
+    return MedicalAiErrorHandler.unavailableMessage;
   }
 
   String _extractApiErrorMessage(dynamic data) {

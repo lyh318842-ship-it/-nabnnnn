@@ -270,7 +270,6 @@ class _HealthAssessmentScreenState extends State<HealthAssessmentScreen>
       appBar: AppBar(
         title: const Text('تقييم الصحة الذكي'),
         elevation: 0,
-        backgroundColor: MedicalTheme.primaryMedicalBlue,
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -344,9 +343,9 @@ class _HealthAssessmentScreenState extends State<HealthAssessmentScreen>
           children: [
             Row(
               children: [
-                _circleIcon(Icons.psychology_alt_rounded, MedicalTheme.primaryMedicalBlue),
+                _circleIcon(Icons.psychology_alt_rounded, theme.colorScheme.primary),
                 const SizedBox(width: 12),
-                const Expanded(child: Text('اختر الأعراض أو منطقة الألم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                Expanded(child: Text('اختر الأعراض أو منطقة الألم', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800))),
               ],
             ),
             const SizedBox(height: 14),
@@ -359,8 +358,8 @@ class _HealthAssessmentScreenState extends State<HealthAssessmentScreen>
                   selected: selected,
                   label: Text(symptom),
                   avatar: Icon(selected ? Icons.check_circle : Icons.add_circle_outline, size: 18),
-                  selectedColor: MedicalTheme.primaryMedicalBlue.withOpacity(0.18),
-                  checkmarkColor: MedicalTheme.primaryMedicalBlue,
+                  selectedColor: theme.colorScheme.primaryContainer,
+                  checkmarkColor: theme.colorScheme.onPrimaryContainer,
                   onSelected: (value) => setState(() {
                     value ? _selectedSymptoms.add(symptom) : _selectedSymptoms.remove(symptom);
                   }),
@@ -379,8 +378,8 @@ class _HealthAssessmentScreenState extends State<HealthAssessmentScreen>
                   icon: const Icon(Icons.travel_explore_rounded),
                   label: const Text('تحليل الأعراض واقتراح طبيب'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: MedicalTheme.primaryMedicalBlue,
-                    foregroundColor: Colors.white,
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
@@ -401,13 +400,13 @@ class _HealthAssessmentScreenState extends State<HealthAssessmentScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('التقييم التفصيلي السابق', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('التقييم التفصيلي السابق', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: _isLoading ? null : _startNewAssessment,
               icon: const Icon(Icons.quiz_rounded),
               label: Text(_hasCompletedAssessment ? 'إعادة الاختبار التفصيلي' : 'ابدأ التقييم التفصيلي'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[700], foregroundColor: Colors.white),
+
             ),
             if (_hasCompletedAssessment) ...[
               const SizedBox(height: 10),
@@ -463,7 +462,7 @@ class _HealthAssessmentScreenState extends State<HealthAssessmentScreen>
                   children: [
                     _circleIcon(result.rule.icon, result.rule.color),
                     const SizedBox(width: 12),
-                    Expanded(child: Text(result.rule.patientMessage, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                    Expanded(child: Text(result.rule.patientMessage, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800))),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -724,13 +723,13 @@ class _HealthAssessmentScreenState extends State<HealthAssessmentScreen>
   Widget _buildMedicalDisclaimer(ThemeData theme) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(color: MedicalTheme.pendingYellow.withOpacity(0.1), borderRadius: BorderRadius.circular(14), border: Border.all(color: MedicalTheme.pendingYellow.withOpacity(0.6))),
-        child: const Row(children: [Icon(Icons.info_rounded, color: MedicalTheme.pendingYellow), SizedBox(width: 12), Expanded(child: Text('ملاحظة: هذا التقييم استرشادي فقط ولا يغني عن استشارة الطبيب المتخصص', style: TextStyle(fontSize: 12)))]),
+        child: Row(children: [Icon(Icons.info_rounded, color: theme.colorScheme.onSurface), const SizedBox(width: 12), Expanded(child: Text('ملاحظة: هذا التقييم استرشادي فقط ولا يغني عن استشارة الطبيب المتخصص', style: theme.textTheme.bodySmall))]),
       );
 
-  Widget _emptyIcon(IconData icon) => Icon(icon, size: 68, color: Colors.grey[400]);
+  Widget _emptyIcon(IconData icon) => Icon(icon, size: 68, color: Theme.of(context).colorScheme.onSurfaceVariant);
 
   Widget _buildEmptyState(IconData icon, String title, String subtitle) => Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [_emptyIcon(icon), const SizedBox(height: 16), Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 8), Text(subtitle, style: TextStyle(color: Colors.grey[600]))]),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [_emptyIcon(icon), const SizedBox(height: 16), Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 8), Text(subtitle, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))]),
       );
 
   Widget _circleIcon(IconData icon, Color color) => Container(
@@ -741,7 +740,7 @@ class _HealthAssessmentScreenState extends State<HealthAssessmentScreen>
 
   Widget _infoTile(IconData icon, String title, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 7),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, size: 20, color: MedicalTheme.primaryMedicalBlue), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 2), Text(value)]))]),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, size: 20, color: MedicalTheme.primaryMedicalBlue), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)), const SizedBox(height: 2), Text(value, style: Theme.of(context).textTheme.bodyMedium)]))]),
       );
 
   Widget _metric(IconData icon, String value, String label, Color color) => Container(
