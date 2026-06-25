@@ -44,6 +44,28 @@ class MedicalTheme {
   static const Color dividerLight = Color(0xFFE8E8E8);
   static const Color dividerDark = Color(0xFF3A3A3A);
 
+
+  static const TextStyle _appBarTitleTextStyle = TextStyle(
+    fontFamily: 'Tajawal',
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    color: pure,
+  );
+
+  static AppBarTheme _appBarTheme(Color background) => AppBarTheme(
+        backgroundColor: background,
+        foregroundColor: pure,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        shadowColor: Colors.black26,
+        centerTitle: true,
+        titleTextStyle: _appBarTitleTextStyle,
+        toolbarTextStyle: _appBarTitleTextStyle,
+        iconTheme: const IconThemeData(color: pure, size: 24),
+        actionsIconTheme: const IconThemeData(color: pure, size: 24),
+      );
+
   // ============ ألوان الحقول والحدود ============
   static const Color borderLight = Color(0xFFD1D5DB);
   static const Color borderDark = Color(0xFF4B5563);
@@ -81,19 +103,11 @@ class MedicalTheme {
       ),
 
       // AppBar Theme
-      appBarTheme: AppBarTheme(
-        backgroundColor: primaryMedicalBlue,
-        foregroundColor: pure,
-        elevation: 2,
-        shadowColor: Colors.black26,
-        centerTitle: true,
-        titleTextStyle: const TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: pure,
-        ),
-        iconTheme: const IconThemeData(color: pure),
+      appBarTheme: _appBarTheme(primaryMedicalBlue),
+      tabBarTheme: const TabBarTheme(
+        labelColor: pure,
+        unselectedLabelColor: Color(0xD9FFFFFF),
+        indicatorColor: pure,
       ),
 
       // Text Theme
@@ -472,19 +486,11 @@ class MedicalTheme {
       ),
 
       // AppBar Theme
-      appBarTheme: AppBarTheme(
-        backgroundColor: darkGray800,
-        foregroundColor: lightGray100,
-        elevation: 2,
-        shadowColor: Colors.black54,
-        centerTitle: true,
-        titleTextStyle: const TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: lightGray100,
-        ),
-        iconTheme: const IconThemeData(color: lightGray100),
+      appBarTheme: _appBarTheme(darkGray800),
+      tabBarTheme: const TabBarTheme(
+        labelColor: pure,
+        unselectedLabelColor: Color(0xD9FFFFFF),
+        indicatorColor: primaryMedicalBlueLight,
       ),
 
       // Text Theme
